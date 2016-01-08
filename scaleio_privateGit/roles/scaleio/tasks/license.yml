@@ -1,0 +1,5 @@
+---
+- name: License activate
+  shell: echo "License Activate"
+
+

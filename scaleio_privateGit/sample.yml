@@ -1,0 +1,24 @@
+---
+- name: uninstall ScaleIO
+  hosts: all
+  gather_facts: yes
+  vars:
+    devices:
+     - device: "/dev/sdb"
+     - device: "/dev/sdc"
+     - device: "/dev/sdd"
+     - device: "/dev/sde"
+     - device: "/dev/sdf"
+     - device: "/dev/sdg"
+
+
+  tasks:
+  - name: A
+    shell: echo $( ls /dev/ | grep scinia )
+    register: scaleio_device
+
+  - name: B
+    shell: |
+      echo -n > /tmp/deleteme
+      echo {{ scaleio_device.stdout }} > /tmp/deleteme
+    when: scaleio_device.stdout != ""

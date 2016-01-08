@@ -1,0 +1,6 @@
+---
+- name: partitioning logical device
+  shell: "/tmp/scaleio/parted.sh {{ item.device }}"
+  ignore_errors: true
+  with_items: "{{ devices }}"
+

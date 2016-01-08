@@ -1,0 +1,32 @@
+---
+- name: uninstall ScaleIO
+  hosts: all
+  gather_facts: yes
+  tasks:
+   - name: umount /scaleio
+     shell: umount -l /scaleio
+     ignore_errors: true
+
+   - name: clear rpm
+     shell: "for i in `rpm -qa | grep -i emc-scaleio`; do rpm -e $i ; done"
+
+#   - name: clear yum
+#     shell: "yum -y remove nmactl libaio mutt bash-completion java-1.7.0"
+
+#   - name: clear tmp
+#     shell: "rm -rf /tmp/scaleio/*"
+
+   - name: unpart devices
+     shell: |
+       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sdb -s rm $i ; done ;
+       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sdc -s rm $i ; done ;
+       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sdd -s rm $i ; done ;
+       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sde -s rm $i ; done ;
+       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sdf -s rm $i ; done ;
+#       for i in `seq 1 8` ; do /usr/sbin/parted /dev/sdg -s rm $i ; done ;
+     ignore_errors: true
+
+   - name: rm /opt/emc
+     shell: rm -rf /opt/emc
+     ignore_errors: true
+

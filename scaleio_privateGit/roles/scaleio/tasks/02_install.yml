@@ -1,0 +1,36 @@
+---
+- name: install required packages yum
+  yum: name={{ item }} state=present
+  with_items:
+   - numactl
+   - libaio
+   - mutt
+   - bash-completion
+   - python
+   - java-1.7.0
+
+- name: install gateway
+  shell: GATEWAY_ADMIN_PASSWORD="{{ gateway_admin_password }}" rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-gateway-1.32-402.1.noarch.rpm
+
+- name: install gui
+  shell: rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-gui-1.32-402.1.noarch.rpm
+
+- name: install lia
+  shell: TOKEN="{{ token }}" rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-lia-1.32-402.1.el7.x86_64.rpm
+
+- name: install sds
+  shell: CONF=IOPS rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-sds-1.32-402.1.el7.x86_64.rpm
+
+- name: install sdc
+  shell: MDM_IP="{{ cluster.mdm1_ip }}","{{ cluster.mdm2_ip }}" rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-sdc-1.32-402.1.el7.x86_64.rpm
+
+- name: install mdm and callhome when mdm
+  shell: |
+    rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-mdm-1.32-402.1.el7.x86_64.rpm
+    rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-callhome-1.32-402.1.el7.x86_64.rpm
+  when: inventory_hostname == cluster.mdm1_ip  or  inventory_hostname == cluster.mdm2_ip
+
+- name: install tb
+  shell: rpm -ivh --replacepkgs /tmp/scaleio/EMC-ScaleIO-tb-1.32-402.1.el7.x86_64.rpm
+  when: inventory_hostname == cluster.tb_ip
+

@@ -1,0 +1,10 @@
+---
+ - include: 00_filecopy.yml
+ - include: 01_partition.yml
+ - include: 02_install.yml
+ - include: 03_config.yml
+#  run license.yml only Production
+# - include: license.yml
+# - include: 99_post.yml
+
+

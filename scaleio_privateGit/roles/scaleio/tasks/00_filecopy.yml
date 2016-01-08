@@ -1,0 +1,14 @@
+---
+- name: mkdir /tmp/scaleio
+  shell: |
+    mkdir -p /tmp/scaleio
+    mkdir -p /scaleio
+
+- name: Send ScaleIO packages
+  copy: src="{{ item.filename }}" dest=/tmp/scaleio
+  with_items: "{{ files }}"
+
+- name: mod parted.sh
+  shell: |
+    chmod a+x /tmp/scaleio/*.sh
+

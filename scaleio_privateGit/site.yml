@@ -1,0 +1,9 @@
+---
+- name: install ScaleIO
+  hosts: all
+  gather_facts: yes
+  sudo: yes
+  remote_user: root
+  roles:
+   - { role: scaleio }
+

@@ -1,0 +1,49 @@
+---
+files:
+ - filename: "EMC-ScaleIO-gateway-1.32-402.1.noarch.rpm"
+ - filename: "EMC-ScaleIO-gui-1.32-402.1.noarch.rpm"
+ - filename: "EMC-ScaleIO-lia-1.32-402.1.el7.x86_64.rpm"
+ - filename: "EMC-ScaleIO-mdm-1.32-402.1.el7.x86_64.rpm"
+ - filename: "EMC-ScaleIO-callhome-1.32-402.1.el7.x86_64.rpm"
+ - filename: "EMC-ScaleIO-sdc-1.32-402.1.el7.x86_64.rpm"
+ - filename: "EMC-ScaleIO-sds-1.32-402.1.el7.x86_64.rpm"
+ - filename: "EMC-ScaleIO-tb-1.32-402.1.el7.x86_64.rpm"
+ - filename: "parted.sh"
+ - filename: "get_all_devices_prd.sh"
+ - filename: "get_all_devices_dev.sh"
+
+token: "P@ssw0rd"
+gateway_admin_password: "P@ssw0rd"
+mdm_password: "P@ssw0rd"
+
+cluster:
+  env: dev
+  pd_name: 2N-H-01
+  pool_name: ssd-pool
+  mdm1_ip: 192.168.33.15
+  mdm2_ip: 192.168.33.16
+  tb_ip: 192.168.33.17
+  sds1_ip: 192.168.33.18
+  sds2_ip: 192.168.33.19
+  stock_ip: 192.168.33.20
+
+fault_set_names:
+  - fs01
+  - fs02
+  - fs03
+
+nodes:
+ - { ip: "{{ cluster.mdm1_ip }}" , fs: fs01 }
+ - { ip: "{{ cluster.mdm2_ip }}" , fs: fs02 }
+ - { ip: "{{ cluster.tb_ip }}"   , fs: fs03 }
+ - { ip: "{{ cluster.sds1_ip }}" , fs: fs01 }
+ - { ip: "{{ cluster.sds2_ip }}" , fs: fs02 }
+ - { ip: "{{ cluster.stock_ip }}"   , fs: fs03 }
+
+devices:
+ - device: "/dev/sdb"
+ - device: "/dev/sdc"
+ - device: "/dev/sdd"
+ - device: "/dev/sde"
+ - device: "/dev/sdf"
+

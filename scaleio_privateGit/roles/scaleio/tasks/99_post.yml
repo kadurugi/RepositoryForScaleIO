@@ -1,0 +1,8 @@
+---
+- name: post installation
+  shell: echo "post installation"
+
+#- name: delete received packages
+#  file: path="/tmp/scaleio/{{ item.filename }}" state=absent
+#  with_items: "{{ files }}"
+

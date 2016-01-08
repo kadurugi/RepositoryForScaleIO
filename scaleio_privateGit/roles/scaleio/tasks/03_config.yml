@@ -1,0 +1,161 @@
+---
+- name: Configration ScaleIO
+  shell: echo "Configration ScaleIO"
+
+- name: stop sds
+  service: name=sds state=stopped
+
+- name: stop sds
+  service: name=sds state=started
+
+- name: add_primary_mdm
+  shell: scli --add_primary_mdm --primary_mdm_ip {{ cluster.mdm1_ip }} --accept_license
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: stop secondary_mdm
+  service: name=mdm state=stopped
+  when: inventory_hostname == cluster.mdm2_ip
+
+- name: start secondary_mdm
+  service: name=mdm state=started
+  when: inventory_hostname == cluster.mdm2_ip
+
+- name: first login 
+  shell: |
+    sleep 5
+    scli --login --username admin --password admin
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: change password and re-login
+  shell: |
+    scli --set_password --old_password admin --new_password {{ mdm_password }}
+    scli --login --username admin --password {{ mdm_password }}
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: add_secondary_mdm
+  shell: |
+    scli --add_secondary_mdm --secondary_mdm_ip {{ cluster.mdm2_ip }}
+    scli --add_tb --tb_ip {{ cluster.tb_ip }} --i_am_sure
+    scli --switch_to_cluster_mode
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --login --username admin --password {{ mdm_password }}
+    scli --add_protection_domain --protection_domain_name {{ cluster.pd_name }}
+    scli --add_storage_pool --protection_domain_name {{ cluster.pd_name }} --storage_pool_name {{ cluster.pool_name }}
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: login new password
+  shell: scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --login --username admin --password {{ mdm_password }}
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: create fault set fs01-03
+  shell: |
+    scli --add_fault_set --protection_domain_name {{ cluster.pd_name }} --fault_set_name "{{ item }}"
+  with_items: "{{ fault_set_names }}"
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: login new password
+  shell: scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --login --username admin --password {{ mdm_password }}
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: which mdm
+  shell: |
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --query_cluster | grep Primary |  awk '{ print $4}'
+  register: primary_ip
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: switch mdm when diff mdm1_ip and primary_ip
+  shell: |
+      scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --switch_mdm_ownership
+      sleep 5
+  when: 
+    - inventory_hostname == cluster.mdm1_ip
+    - primary_ip.stdout != cluster.mdm1_ip
+
+- name: add sds to storage pool ( no device yet)
+  shell: |
+    sleep 2
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --add_sds --sds_ip {{ item.ip }} --sds_name {{ item.ip }}  --protection_domain_name {{ cluster.pd_name }} --storage_pool_name {{ cluster.pool_name }} --fault_set_name {{ item.fs }} --i_am_sure --force_clean
+  with_items: "{{ nodes }}"
+  when: inventory_hostname == cluster.mdm1_ip
+
+
+
+############ ready to add sds devices
+- name: echo null devices
+  shell: |
+    echo -n > /tmp/scaleio/devices
+
+- name: get devices when prd
+  shell: "/tmp/scaleio/get_all_devices_prd.sh {{ item.device }}"
+  with_items: "{{ devices }}"
+  when: inventory_hostname == cluster.mdm1_ip and cluster.env == "prd"
+
+- name: get devices when dev
+  shell: "/tmp/scaleio/get_all_devices_dev.sh {{ item.device }}"
+  with_items: "{{ devices }}"
+  when: inventory_hostname == cluster.mdm1_ip and cluster.env == "dev"
+
+- name: echo cr
+  shell: echo "" >> /tmp/scaleio/devices
+
+- name: get devices_list
+  shell: cat /tmp/scaleio/devices
+  register: all_devices
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: login mdm
+  shell: scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --login --username admin --password {{ mdm_password }}
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: add sds all devices
+  shell: |
+    sleep 2
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --add_sds_device --sds_ip "{{ item[0].ip }}" --device_path /dev/"{{ item[1] }}" --storage_pool_name {{ cluster.pool_name }}
+  with_nested:
+    - "{{ nodes }}"
+    - all_devices.stdout_lines
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: create volume when prd
+  shell: |
+    sleep 1
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --add_volume --protection_domain_name {{ cluster.pd_name }} --storage_pool_name {{ cluster.pool_name }} --size_gb 500 --volume_name vol-{{ item.ip }}   --thin_provisioned
+  with_items: "{{ nodes }}"
+  when: inventory_hostname == cluster.mdm1_ip and cluster.env == "prd"
+
+
+- name: create volume when dev
+  shell: |
+    sleep 1
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --add_volume --protection_domain_name {{ cluster.pd_name }} --storage_pool_name {{ cluster.pool_name }} --size_gb 1000 --volume_name vol-{{ item.ip }}   --thin_provisioned
+  with_items: "{{ nodes }}"
+  when: inventory_hostname == cluster.mdm1_ip and cluster.env == "dev"
+
+- name: mapping volume to sdc
+  shell: |
+    sleep 1
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --map_volume_to_sdc --volume_name vol-{{ item.ip }} --sdc_ip {{ item.ip }}
+  when: inventory_hostname == cluster.mdm1_ip
+  with_items: "{{ nodes }}"
+
+- name: unmap volume of stock
+  shell: | 
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --unmap_volume_from_sdc --sdc_ip {{ cluster.stock_ip }} --volume_name vol-{{ cluster.stock_ip }} --i_am_sure
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: delete volume of stock
+  shell: |
+    scli --mdm_ip {{ cluster.mdm1_ip }},{{ cluster.mdm2_ip }} --remove_volume --volume_name vol-{{ cluster.stock_ip }} --i_am_sure
+  when: inventory_hostname == cluster.mdm1_ip
+
+- name: parted mklabel /dev/scinia without stock_ip
+  shell: |
+    /usr/sbin/parted /dev/scinia -s mklabel gpt
+    /usr/sbin/parted /dev/scinia -s mkpart primary 0% 100%
+  when: inventory_hostname != cluster.stock_ip
+
+- name: mfks.xfs and mount /dev/scinia1 without stock_ip
+  shell: |  
+    mkfs.xfs /dev/scinia1
+    mount /dev/scinia1 /scaleio
+  when: inventory_hostname != cluster.stock_ip
+
